@@ -11,7 +11,7 @@ VERIFY_TOKEN = "Gypsum_2026_Secret"
 GOOGLE_API_KEY = "AIzaSyBcXiePY5q_sfupFpdg8dlHToiCUfRyqs0"
 
 genai.configure(api_key=GOOGLE_API_KEY)
-model = genai.GenerativeModel('gemini-pro')
+model = genai.GenerativeModel('gemini-1.5-flash')
 
 SYSTEM_INSTRUCTIONS = """
 أنت مساعد ذكي لشركة 'تقنيات الجبس بورد' في مصر. 
@@ -45,8 +45,7 @@ def webhook():
 
 def ask_gemini(user_input):
     try:
-        full_prompt = f"{SYSTEM_INSTRUCTIONS}\nالعميل: {user_input}"
-        response = model.generate_content(full_prompt)
+        response = model.generate_content(f"{SYSTEM_INSTRUCTIONS}\nالعميل: {user_input}")
         return response.text
     except Exception as e:
         print(f"Error: {e}")
