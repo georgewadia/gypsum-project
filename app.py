@@ -1,6 +1,6 @@
 import os
 import requests
-from Flask import Flask, request
+from flask import Flask, request  # تم تصحيح حرف الـ f هنا ليصبح صغيراً
 import google.generativeai as genai
 
 app = Flask(__name__)
@@ -47,7 +47,6 @@ def webhook():
 
 def ask_gemini(user_input):
     try:
-        # هنا تم تصحيح الخطأ: استخدمنا user_input بدلاً من user_text
         prompt = f"{SYSTEM_INSTRUCTIONS}\nالعميل يسأل: {user_input}"
         response = model.generate_content(prompt)
         
