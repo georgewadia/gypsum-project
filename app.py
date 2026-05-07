@@ -9,7 +9,7 @@ app = Flask(__name__)
 # حط مفاتيحك هنا مباشرة بين علامات التنصيص
 PAGE_ACCESS_TOKEN = "EAAbi5AUtx5ABRTLUS3KD5yKTxzamQjJQBNNZArXGiZByKPgVyP7g7AKO7qjuYUZAzbLFBDZBLZByfmdUryaZCFz7s3O9Wr91Uwzn0Rgq3u5StAByiXhiTYeznKZBr0doQvO8JXv271nnWiZApKkSPZBOBoZCs1zvSbc2pxxoOTNNEZBn1A75xsXsp8kRmlmm478OqEKlbaghTJ9ZBnYPdxNX2ywd"
 VERIFY_TOKEN = "Gypsum_2026_Secret"
-GROQ_API_KEY = "حط_هنا_مفتاح_GROQ_الجديد"
+GROQ_API_KEY = "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"
 
 client = Groq(api_key=GROQ_API_KEY)
 
