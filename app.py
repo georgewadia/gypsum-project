@@ -38,10 +38,10 @@ def webhook():
                     user_text = messaging_event["message"].get("text", "")
                     
                     if user_text:
-                        try:
-                            # طلب الرد من Groq
+                       try:
+                            # طلب الرد من موديل Groq الأحدث
                             completion = client.chat.completions.create(
-                                model="llama3-8b-8192",
+                                model="llama-3.1-8b-instant",  # ده الموديل الجديد الشغال حالياً
                                 messages=[
                                     {"role": "system", "content": SYSTEM_INSTRUCTIONS},
                                     {"role": "user", "content": user_text}
