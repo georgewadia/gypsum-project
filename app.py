@@ -1,69 +1,55 @@
 import os
 import requests
-from flask import Flask, request  # تم تصحيح حرف الـ f هنا ليصبح صغيراً
-import google.generativeai as genai
+from flask import Flask, request
+from groq import Groq
 
 app = Flask(__name__)
 
 # --- الإعدادات ---
-PAGE_ACCESS_TOKEN = "EAAbi5AUtx5ABRTLUS3KD5yKTxzamQjJQBNNZArXGiZByKPgVyP7g7AKO7qjuYUZAzbLFBDZBLZByfmdUryaZCFz7s3O9Wr91Uwzn0Rgq3u5StAByiXhiTYeznKZBr0doQvO8JXv271nnWiZApKkSPZBOBoZCs1zvSbc2pxxoOTNNEZBn1A75xsXsp8kRmlmm478OqEKlbaghTJ9ZBnYPdxNX2ywd"
+PAGE_ACCESS_TOKEN = "EAAbi5AUtx5ABRWcL2mYT3X4Hw8EqPPvu0s73h7cJ4LGYFsgarwZCV5MyRMbAqA1xmlpZB1HdRw7ZBWVgLCa3jpdC03wavmmVQhKERygzgAhRZCyssibLFntq5qpRroYjMObVoZC9SsYlq93jPZAmxYKabu0wctd9Lr8MvjEdOZB7fvVwtlbk71XFknmJGVHI7kYLYBxEYCWwDhPKU0jrnDN"
 VERIFY_TOKEN = "Gypsum_2026_Secret"
-GOOGLE_API_KEY = "AIzaSyBcXiePY5q_sfupFpdg8dlHToiCUfRyqs0"
+GROQ_API_KEY = "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"
 
-# تهيئة Gemini
-genai.configure(api_key=GOOGLE_API_KEY)
-model = genai.GenerativeModel('gemini-pro')
+client = Groq(api_key=GROQ_API_KEY)
 
 SYSTEM_INSTRUCTIONS = """
 أنت 'جورج'، خبير جبس بورد مصري محترف وصاحب شركة 'تقنيات الجبس بورد'.
-رد بلهجة مصرية محترمة وودودة (لهجة الصنايعية الشيك).
-ركز على: (ميزان ليزر، صاج محمل، خامات كناوف، جودة التشطيب).
-السعر: قوله "بيعتمد على التصميم والمساحة، ابعتلي صورة للتصميم أو قولي المساحة كام وأنا هعملك أحلى مقايسة."
-حاول تقنع العميل يحدد موعد معاينة.
+رد بلهجة مصرية ودودة وشاطرة. 
+مميزاتنا: ميزان ليزر، صاج محمل 0.4 و 0.5، خامات كناوف.
+لو سأل عن السعر: السعر حسب التصميم، اطلب منه يبعت صورة أو يحدد موعد معاينة مجانية.
 """
 
 @app.route("/", methods=['GET'])
 def verify():
     if request.args.get("hub.verify_token") == VERIFY_TOKEN:
         return request.args.get("hub.challenge")
-    return "Verification failed", 403
+    return "failed", 403
 
 @app.route("/", methods=['POST'])
 def webhook():
     data = request.get_json()
     if data.get("object") == "page":
         for entry in data["entry"]:
-            for messaging_event in entry.get("messaging", []):
-                if messaging_event.get("message") and not messaging_event["message"].get("is_echo"):
-                    sender_id = messaging_event["sender"]["id"]
-                    message_text = messaging_event["message"].get("text")
-                    
-                    if message_text:
-                        print(f"استلمت رسالة: {message_text}")
-                        ai_answer = ask_gemini(message_text)
+            for msg in entry.get("messaging", []):
+                if msg.get("message") and not msg["message"].get("is_echo"):
+                    sender_id = msg["sender"]["id"]
+                    user_text = msg["message"].get("text")
+                    if user_text:
+                        # طلب الرد من Groq (بديل Gemini العالمي)
+                        chat_completion = client.chat.completions.create(
+                            messages=[
+                                {"role": "system", "content": SYSTEM_INSTRUCTIONS},
+                                {"role": "user", "content": user_text}
+                            ],
+                            model="llama3-8b-8192",
+                        )
+                        ai_answer = chat_completion.choices[0].message.content
                         send_fb_message(sender_id, ai_answer)
-                        
     return "ok", 200
 
-def ask_gemini(user_input):
-    try:
-        prompt = f"{SYSTEM_INSTRUCTIONS}\nالعميل يسأل: {user_input}"
-        response = model.generate_content(prompt)
-        
-        if response and response.text:
-            return response.text
-        else:
-            return "منور يا فنان! المهندس جورج معاك، سيب سؤالك ومكانك وهرد عليك بالتفصيل حالا."
-            
-    except Exception as e:
-        print(f"DEBUG: Gemini Error: {e}")
-        return "أهلاً بك! المهندس جورج معاك، سيب سؤالك ومكانك وهرد عليك فوراً."
-
-def send_fb_message(recipient_id, text):
+def send_fb_message(pid, txt):
     url = f"https://graph.facebook.com/v19.0/me/messages?access_token={PAGE_ACCESS_TOKEN}"
-    payload = {"recipient": {"id": recipient_id}, "message": {"text": text}}
-    requests.post(url, json=payload)
+    requests.post(url, json={"recipient": {"id": pid}, "message": {"text": txt}})
 
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 8080))
-    app.run(host='0.0.0.0', port=port)
+    app.run(host='0.0.0.0', port=int(os.environ.get("PORT", 8080)))
