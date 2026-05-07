@@ -12,7 +12,7 @@ GOOGLE_API_KEY = "AIzaSyBcXiePY5q_sfupFpdg8dlHToiCUfRyqs0"
 
 # تهيئة Gemini
 genai.configure(api_key=GOOGLE_API_KEY)
-model = genai.GenerativeModel('gemini-1.5-flash')
+model = genai.GenerativeModel('gemini-pro')
 
 SYSTEM_INSTRUCTIONS = """
 أنت 'جورج'، خبير جبس بورد مصري محترف وصاحب شركة 'تقنيات الجبس بورد'.
