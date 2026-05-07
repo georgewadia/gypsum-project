@@ -31,15 +31,13 @@ def webhook():
                     user_text = messaging_event["message"].get("text")
                     if user_text:
                         try:
-                            # الطريقة الجديدة لطلب الرد من جوجل
-                            response = client.models.generate_content(
-                                model="gemini-1.5-flash", 
-                                contents=f"{SYSTEM_INSTRUCTIONS}\nالعميل: {user_text}"
-                            )
-                            ai_answer = response.text
-                        except Exception as e:
-                            print(f"Error calling Gemini: {e}")
-                            ai_answer = "منور يا فنان! المهندس جورج معاك، سيب سؤالك وهرد عليك فوراً."
+            prompt = f"{SYSTEM_INSTRUCTIONS}\nالعميل: {user_text}"
+            response = model.generate_content(prompt)
+            ai_answer = response.text
+        except Exception as e:
+            # السطر ده هيخلينا نشوف الغلط في Railway Logs
+            print(f"DEBUG: Gemini Error: {e}")
+            ai_answer = "منور يا فنان! ثواني والمهندس جورج هيتواصل معاك."
                         
                         send_fb_message(sender_id, ai_answer)
     return "ok", 200
