@@ -1,31 +1,32 @@
 import os
 import requests
-import sys
 from flask import Flask, request
 from groq import Groq
-
-# إجبار السيرفر على التعامل مع اللغة العربية (UTF-8)
-if sys.stdout.encoding != 'utf-8':
-    import io
-    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 
 app = Flask(__name__)
 
 # --- الإعدادات ---
+# تأكد من وضع المفاتيح بدقة بين علامات التنصيص
 PAGE_ACCESS_TOKEN = "EAAbi5AUtx5ABRTLUS3KD5yKTxzamQjJQBNNZArXGiZByKPgVyP7g7AKO7qjuYUZAzbLFBDZBLZByfmdUryaZCFz7s3O9Wr91Uwzn0Rgq3u5StAByiXhiTYeznKZBr0doQvO8JXv271nnWiZApKkSPZBOBoZCs1zvSbc2pxxoOTNNEZBn1A75xsXsp8kRmlmm478OqEKlbaghTJ9ZBnYPdxNX2ywd"
 VERIFY_TOKEN = "Gypsum_2026_Secret"
 GROQ_API_KEY = "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"
 
+# تهيئة عميل Groq
 client = Groq(api_key=GROQ_API_KEY)
 
-# التعليمات بالعربية والإنجليزية لضمان عدم حدوث Error
-SYSTEM_INSTRUCTIONS = "You are George, an Egyptian gypsum board expert. Reply only in Egyptian Arabic. Talk about laser levels, Knauf materials, and thick metal (0.4/0.5). If asked about price, ask for a design photo and location for a free estimate."
+SYSTEM_PROMPT = """
+أنت 'جورج'، فنان وصنايعي جبس بورد مصري محترف.
+ردودك لازم تكون بلهجة مصرية، شاطرة، وأمينة.
+ركز على: (ميزان ليزر، صاج محمل 0.4 و 0.5، خامات كناوف، تسليم على المفتاح).
+لو سأل عن السعر: "يا فنان، السعر بيعتمد على الرسمة والمساحة. ابعتلي صورة الشغل اللي عاجبك ومساحة المكان وهعملك أحلى عرض سعر."
+هدفنا: إقناع العميل بالمعاينة المجانية.
+"""
 
 @app.route("/", methods=['GET'])
 def verify():
     if request.args.get("hub.verify_token") == VERIFY_TOKEN:
         return request.args.get("hub.challenge")
-    return "Verification failed", 403
+    return "Verification Failed", 403
 
 @app.route("/", methods=['POST'])
 def webhook():
@@ -35,37 +36,38 @@ def webhook():
             for messaging_event in entry.get("messaging", []):
                 if messaging_event.get("message") and not messaging_event["message"].get("is_echo"):
                     sender_id = messaging_event["sender"]["id"]
-                    user_text = messaging_event["message"].get("text", "")
+                    user_text = messaging_event["message"].get("text")
                     
                     if user_text:
-                       try:
-                            # طلب الرد من موديل Groq الأحدث
+                        try:
+                            # طلب الرد من موديل Llama 3 الصاروخي
                             completion = client.chat.completions.create(
-                                model="llama-3.1-8b-instant",  # ده الموديل الجديد الشغال حالياً
+                                model="llama3-8b-8192",
                                 messages=[
-                                    {"role": "system", "content": SYSTEM_INSTRUCTIONS},
+                                    {"role": "system", "content": SYSTEM_PROMPT},
                                     {"role": "user", "content": user_text}
                                 ]
                             )
-                            ai_answer = completion.choices[0].message.content
+                            ai_response = completion.choices[0].message.content
                         except Exception as e:
-                            # طباعة الخطأ بشكل سليم
-                            print(f"DEBUG ERROR: {str(e)}")
-                            ai_answer = "يا فنان نورتنا! المهندس جورج معاك، قولي محتاج تعمل جبس بورد فين بالظبط؟"
+                            # طباعة الغلط في Railway Logs للتصحيح
+                            print(f"DEBUG ERROR: {e}")
+                            ai_response = "يا فنان نورتنا! المهندس جورج معاك، قولي محتاج تعمل جبس بورد فين بالظبط؟"
                         
-                        send_fb_message(sender_id, ai_answer)
+                        send_fb_message(sender_id, ai_response)
                         
     return "ok", 200
 
-def send_fb_message(recipient_id, text):
+def send_fb_message(recipient_id, message_text):
     url = f"https://graph.facebook.com/v19.0/me/messages?access_token={PAGE_ACCESS_TOKEN}"
-    # إرسال النص بترميز JSON سليم ليدعم العربية
+    headers = {"Content-Type": "application/json"}
     payload = {
         "recipient": {"id": recipient_id},
-        "message": {"text": text}
+        "message": {"text": message_text}
     }
-    requests.post(url, json=payload)
+    requests.post(url, json=payload, headers=headers)
 
 if __name__ == "__main__":
+    # استخدام بورت Railway التلقائي
     port = int(os.environ.get("PORT", 8080))
     app.run(host='0.0.0.0', port=port)
