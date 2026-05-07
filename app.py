@@ -11,7 +11,7 @@ PAGE_ACCESS_TOKEN = "EAAbi5AUtx5ABRWqPsd35SgrWib0ssEzJhWrNHvAdGhfmZB098NfkbQvQeV
 # توكن التحقق (الذي وضعته في Webhook فيسبوك)
 VERIFY_TOKEN = "Gypsum_2026_Secret"
 # مفتاح Groq (تأكد إنه شغال وجديد)
-GROQ_API_KEY = "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"
+GROQ_API_KEY = "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"
 
 # تهيئة عميل Groq
 client = Groq(api_key=GROQ_API_KEY)
