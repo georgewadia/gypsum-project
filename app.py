@@ -1,39 +1,51 @@
 import os
 import requests
 from flask import Flask, request
-from groq import Groq
 
 app = Flask(__name__)
 
-# --- الإعدادات النهائية ---
-# 1. توكن فيسبوك (الذي يربط الكود بصفحتك)
-PAGE_ACCESS_TOKEN = "EAAbi5AUtx5ABRTLUS3KD5yKTxzamQjJQBNNZArXGiZByKPgVyP7g7AKO7qjuYUZAzbLFBDZBLZByfmdUryaZCFz7s3O9Wr91Uwzn0Rgq3u5StAByiXhiTYeznKZBr0doQvO8JXv271nnWiZApKkSPZBOBoZCs1zvSbc2pxxoOTNNEZBn1A75xsXsp8kRmlmm478OqEKlbaghTJ9ZBnYPdxNX2ywd"
-
-# 2. توكن التحقق (الذي تكتبه داخل إعدادات Webhook فيسبوك)
+# --- الإعدادات المحدثة بدقة ---
+PAGE_ACCESS_TOKEN = "EAAbi5AUtx5ABReCN1WQwjZC5I5MAiaFbp5fAq4n1kbYUzBx7UvWZAJBzpAt0Ei84v5RDJEbQEjylkQvVxcF4sp9kytPSFsZBKBPyQQb5VAKgoWBb9Y8ZCxrE34TeMZAgXeNYku8g61qrcyxnMpyojVKjZAwGYwmAhRvxfJa1SfHbGk7EGpPyfnkZCsMKNkr5UhICkw0XOxoZCEhg3rQONrj8"
 VERIFY_TOKEN = "Gypsum_2026_Secret"
+TOGETHER_API_KEY = "tgp_v1_J_AApC2mmPg9QqEGyPNVntbRhu_nIzRyRbW0g9JgN3M"
 
-# 3. مفتاح Groq (العقل المفكر للبوت)
-# نصيحة: لو تقدر تعمل مفتاح جديد من Groq Console هيكون أضمن
-GROQ_API_KEY = "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"
-
-# تهيئة الاتصال بـ Groq
-client = Groq(api_key=GROQ_API_KEY)
-
-# تعليمات الشخصية (جورج الصنايعي الشاطر)
-SYSTEM_PROMPT = """
-أنت 'جورج'، فنان وصنايعي جبس بورد مصري محترف وصاحب شركة 'تقنيات الجبس بورد'.
-ردودك دايماً بلهجة مصرية عامية، محترمة، وشاطرة. 
-ركز على: ميزان ليزر للدقة، صاج محمل (0.4 و 0.5)، وخامات كناوف الأصلية.
-لو سأل عن السعر: "يا فنان السعر بيختلف حسب التصميم والمساحة، ابعتلي صورة للديزاين اللي عاجبك وأنا هعملك مقايسة مفيش زيها".
-حاول دايماً تخليهم يحددوا موعد معاينة مجانية في التجمع أو أي مكان.
+SYSTEM_INSTRUCTIONS = """
+أنت 'جورج'، خبير جبس بورد مصري محترف وصاحب شركة 'تقنيات الجبس بورد'.
+رد بلهجة مصرية عامية ودودة ومحترمة.
+نقاط القوة: (ميزان ليزر للدقة، صاج محمل 0.4 و 0.5 للمتانة، خامات كناوف الأصلية).
+لو سأل عن السعر: "يا فنان السعر بيختلف حسب التصميم والمساحة، ابعتلي صورة للتصميم اللي عاجبك ومساحة المكان وهعملك أحلى مقايسة".
+هدفك: إقناع العميل بتحديد موعد معاينة مجانية.
 """
+
+def get_ai_response(user_text):
+    url = "https://api.together.xyz/v1/chat/completions"
+    headers = {
+        "Authorization": f"Bearer {TOGETHER_API_KEY}",
+        "Content-Type": "application/json"
+    }
+    payload = {
+        "model": "meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo",
+        "messages": [
+            {"role": "system", "content": SYSTEM_INSTRUCTIONS},
+            {"role": "user", "content": user_text}
+        ],
+        "max_tokens": 512,
+        "temperature": 0.7
+    }
+    try:
+        response = requests.post(url, json=payload, headers=headers)
+        response.raise_for_status()
+        return response.json()['choices'][0]['message']['content']
+    except Exception as e:
+        print(f"Error calling Together AI: {e}")
+        return "منور يا فنان! المهندس جورج معاك، سيب سؤالك ومكانك وهرد عليك بالتفصيل حالا."
 
 @app.route("/", methods=['GET'])
 def verify():
-    # كود التحقق الإلزامي لفيسبوك
+    # التحقق من الرابط عند ربطه بفيسبوك
     if request.args.get("hub.verify_token") == VERIFY_TOKEN:
         return request.args.get("hub.challenge")
-    return "خطأ في التحقق", 403
+    return "Verification failed", 403
 
 @app.route("/", methods=['POST'])
 def webhook():
@@ -41,33 +53,18 @@ def webhook():
     if data.get("object") == "page":
         for entry in data["entry"]:
             for messaging_event in entry.get("messaging", []):
-                # التأكد أن الرسالة قادمة من مستخدم وليست صدى (Echo)
                 if messaging_event.get("message") and not messaging_event["message"].get("is_echo"):
                     sender_id = messaging_event["sender"]["id"]
                     user_text = messaging_event["message"].get("text")
                     
                     if user_text:
-                        try:
-                            # استدعاء الذكاء الاصطناعي Groq
-                            completion = client.chat.completions.create(
-                                model="llama3-8b-8192",
-                                messages=[
-                                    {"role": "system", "content": SYSTEM_PROMPT},
-                                    {"role": "user", "content": user_text}
-                                ]
-                            )
-                            response_text = completion.choices[0].message.content
-                        except Exception as e:
-                            # في حالة حدوث أي خطأ في API، يطبع هنا ويرد بالرد التلقائي
-                            print(f"Error logic: {e}")
-                            response_text = "يا فنان نورتنا! المهندس جورج معاك، قولي محتاج تعمل جبس بورد فين بالظبط؟"
-                        
-                        send_fb_message(sender_id, response_text)
+                        # الحصول على الرد من الذكاء الاصطناعي
+                        ai_answer = get_ai_response(user_text)
+                        send_fb_message(sender_id, ai_answer)
                         
     return "ok", 200
 
 def send_fb_message(recipient_id, text):
-    # دالة إرسال الرد لفيسبوك
     url = f"https://graph.facebook.com/v19.0/me/messages?access_token={PAGE_ACCESS_TOKEN}"
     payload = {
         "recipient": {"id": recipient_id},
@@ -76,6 +73,6 @@ def send_fb_message(recipient_id, text):
     requests.post(url, json=payload)
 
 if __name__ == "__main__":
-    # تشغيل السيرفر على بورت Railway التلقائي
+    # Railway يستخدم بورت 8080 تلقائياً
     port = int(os.environ.get("PORT", 8080))
     app.run(host='0.0.0.0', port=port)
