@@ -5,25 +5,19 @@ from openai import OpenAI
 
 app = Flask(__name__)
 
-# --- الإعدادات النهائية المدمجة ---
+# --- الإعدادات (المفاتيح المخفية) ---
 PAGE_ACCESS_TOKEN = "EAAbi5AUtx5ABReCN1WQwjZC5I5MAiaFbp5fAq4n1kbYUzBx7UvWZAJBzpAt0Ei84v5RDJEbQEjylkQvVxcF4sp9kytPSFsZBKBPyQQb5VAKgoWBb9Y8ZCxrE34TeMZAgXeNYku8g61qrcyxnMpyojVKjZAwGYwmAhRvxfJa1SfHbGk7EGpPyfnkZCsMKNkr5UhICkw0XOxoZCEhg3rQONrj8"
 VERIFY_TOKEN = "Gypsum_2026_Secret"
-OPENAI_API_KEY = "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"
+
+# هنا بنقول للكود: روح اقرأ المفتاح من إعدادات Railway مش من هنا
+OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
 
 client = OpenAI(api_key=OPENAI_API_KEY)
 
-# تطوير الشخصية: "جورج" المهندس الفنان
 SYSTEM_PROMPT = """
-أنت 'جورج'، مهندس وخبير جبس بورد مصري محترف جداً، صاحب شركة 'تقنيات الجبس بورد'.
-تحدث بلهجة مصرية عامية، ذكية، وودودة.
-نقاط القوة التي تركز عليها: 
-1. الاستلام بميزان ليزر (على الشعرة).
-2. استخدام صاج محمل (0.4 و 0.5) لضمان عدم حدوث شروخ أو "ترريح" في السقف.
-3. خامات كناوف (Knauf) الأصلية والخضراء للمناطق الرطبة.
-4. الالتزام بالمواعيد وسرعة التنفيذ.
-
-إذا سأل العميل عن السعر: "يا فنان السعر بيختلف حسب التصميم والمساحة وكمية الديكور. ابعتلي صورة الديزاين اللي عاجبك ومكان الشقة وهعملك مقايسة هندسية محترمة."
-هدفك دايماً: تحديد موعد لمعاينة المكان على الطبيعة مجاناً.
+أنت 'جورج'، فنان جبس بورد مصري محترف. ردودك عامية مصرية، شاطرة، وبتركز على ميزان الليزر وصاج كناوف المحمل.
+لو سأل عن السعر قوله: "يا فنان السعر حسب التصميم والمساحة، ابعت صورة وهعملك أحلى مقايسة".
+هدفنا: تحديد موعد معاينة مجانية.
 """
 
 @app.route("/", methods=['GET'])
@@ -43,19 +37,17 @@ def webhook():
                     user_text = msg_event["message"]["text"]
                     
                     try:
-                        # طلب الرد من GPT-4o
                         response = client.chat.completions.create(
-                            model="gpt-4o", # الموديل الأحدث والأذكى
+                            model="gpt-4o",
                             messages=[
                                 {"role": "system", "content": SYSTEM_PROMPT},
                                 {"role": "user", "content": user_text}
-                            ],
-                            temperature=0.7 # ليعطي ردوداً طبيعية وغير متكررة
+                            ]
                         )
                         ai_answer = response.choices[0].message.content
                     except Exception as e:
                         print(f"OpenAI Error: {e}")
-                        ai_answer = "يا فنان نورتنا! المهندس جورج معاك، ابعتلي طلبك وهرد عليك فوراً بكل التفاصيل اللي محتاجها."
+                        ai_answer = "منور يا فنان! المهندس جورج معاك، سيب سؤالك وهرد عليك حالا."
 
                     send_fb_message(sender_id, ai_answer)
     return "ok", 200
